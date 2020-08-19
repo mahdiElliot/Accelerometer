@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/AccelerometerFragment">
+
+    <fragment
+        android:id="@+id/AccelerometerFragment"
+        android:name="com.example.accelerometer.view.fragment.AccelerometerFragment"
+        android:label="@string/first_fragment_label"
+        tools:layout="@layout/fragment_accelerometer">
+
+        <action
+            android:id="@+id/action_AccelerometerFragment_to_GyroscopeFragment"
+            app:destination="@id/GyroscopeFragment"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"/>
+    </fragment>
+    <fragment
+        android:id="@+id/GyroscopeFragment"
+        android:name="com.example.accelerometer.view.fragment.GyroscopeFragment"
+        android:label="@string/second_fragment_label"
+        tools:layout="@layout/fragment_gyroscope"/>
+</navigation>
