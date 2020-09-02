@@ -51,6 +51,17 @@ class DialogListFragment : DialogFragment() {
             }
         }
 
+        btn_delete_all.setOnClickListener {
+            if (this.tag == "acc") {
+                val db = DbHelperAcc(context)
+                db.deleteAll()
+            }else {
+                val db = DbHelperGyr(context)
+                db.deleteAll()
+            }
+           recyclerViewAdapter.submitList(ArrayList())
+            recyclerViewAdapter.notifyDataSetChanged()
+        }
     }
 
     override fun onStart() {

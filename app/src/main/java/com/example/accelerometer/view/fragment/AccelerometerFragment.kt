@@ -20,6 +20,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.navigation.fragment.findNavController
 import com.example.accelerometer.R
+import com.example.accelerometer.internal.BandPassFilter
 import com.example.accelerometer.internal.DbHelperAcc
 import com.example.accelerometer.internal.ViewModelsFactory
 import com.example.accelerometer.model.Accelerometer
@@ -48,19 +49,20 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
     var y = 0.0
     var z = 0.0
     lateinit var thread: Thread
-    var plotData = true
+//    var plotData = true
     var run = true
-    var rate = 1000.0 / 1
+    var rate = 1000.0 / 50
     var center = 0.5
     var width = 100.0
     var order = 2
 
     val butterWorth = Butterworth()
     lateinit var timer: CountDownTimer
+    var now = 0.toLong()
 
     lateinit var writer: FileWriter
     lateinit var dbHelper: DbHelperAcc
-
+    var fileName = ""
 
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?,
@@ -117,7 +119,7 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
         chart.axisLeft.setDrawGridLines(false)
         chart.xAxis.setDrawGridLines(false)
         chart.setDrawBorders(false)
-        startPlot()
+//        startPlot()
 
         btn_up.setOnClickListener {
             leftAxis.axisMaximum += 2
@@ -129,30 +131,8 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
             leftAxis.axisMinimum -= 2
         }
 
-        btn_submit.setOnClickListener {
-            val r = et_rate.text.toString().toInt()
-            viewModel.accRTxt.value = r
-            rate = 1000.0 / r
-            startPlot()
-        }
-
         btn_save.setOnClickListener {
             dbHelper = DbHelperAcc(context)
-//            if (dbHelper.save(Accelerometer(x, y, z))) {
-//                val alertDialog: AlertDialog? = requireActivity().let {
-//                    val builder = AlertDialog.Builder(it)
-//                    builder.apply {
-//                        setPositiveButton("تایید", { dialog, id ->
-//                            Toast.makeText(context, "ذخیره شد", Toast.LENGTH_LONG).show()
-//                        })
-//                    }
-//
-//                    builder.setMessage("x: $x  y: $y  z: $z")
-//                    builder.create()
-//                }
-//
-//                alertDialog?.show()
-//            }
             if (viewModel.isOnTimer.value == true) {
                 timer.cancel()
                 viewModel.isOnTimer.value = false
@@ -167,8 +147,8 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
                 val formatter = SimpleDateFormat("yyyy_MM_dd")
                 val now = Date()
 
-                val fileName = formatter.format(now)
-                val f = File(MainActivity.file, "acc_${fileName}_${now.time}.txt")
+                fileName = "acc_${formatter.format(now)}_${now.time}.txt"
+                val f = File(MainActivity.file, fileName)
                 f.createNewFile()
                 writer = FileWriter(f)
                 if (::timer.isInitialized) timer.cancel()
@@ -185,11 +165,12 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
                         btn_save.setImageResource(R.drawable.ic_save)
                         writer.flush()
                         writer.close()
+                        showDialog()
                         timer.cancel()
+
                     }
                 }.start()
             }
-
         }
 
         btn_gyroscope.setOnClickListener {
@@ -245,15 +226,24 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
             y = event.values[1].toDouble()
             z = event.values[2].toDouble()
 
-            butterWorth.bandPass(order, rate, center, width)
-            val x2 = butterWorth.filter(x)
-            butterWorth.bandPass(order, rate, center, width)
-            val y2 = butterWorth.filter(y)
-            butterWorth.bandPass(order, rate, center, width)
-            val z2 = butterWorth.filter(z)
-            data.addEntry(Entry(set.entryCount.toFloat(), x2.toFloat()), 0)
-            data.addEntry(Entry(set2.entryCount.toFloat(), y2.toFloat()), 1)
-            data.addEntry(Entry(set3.entryCount.toFloat(), z2.toFloat()), 2)
+            viewModel.accSubmitSetting.observe(viewLifecycleOwner, Observer {
+                if (it) {
+                    butterWorth.bandPass(order, rate, center, width)
+                    val x2 = butterWorth.filter(x)
+                    butterWorth.bandPass(order, rate, center, width)
+                    val y2 = butterWorth.filter(y)
+                    butterWorth.bandPass(order, rate, center, width)
+                    val z2 = butterWorth.filter(z)
+                    data.addEntry(Entry(set.entryCount.toFloat(), x2.toFloat()), 0)
+                    data.addEntry(Entry(set2.entryCount.toFloat(), y2.toFloat()), 1)
+                    data.addEntry(Entry(set3.entryCount.toFloat(), z2.toFloat()), 2)
+                } else {
+                    data.addEntry(Entry(set.entryCount.toFloat(), x.toFloat()), 0)
+                    data.addEntry(Entry(set2.entryCount.toFloat(), y.toFloat()), 1)
+                    data.addEntry(Entry(set3.entryCount.toFloat(), z.toFloat()), 2)
+                }
+            })
+
             data.notifyDataChanged()
             chart.notifyDataSetChanged()
             chart.setMaxVisibleValueCount(150)
@@ -261,24 +251,24 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
         }
     }
 
-    private fun startPlot() {
-        if (::thread.isInitialized) {
-            thread.interrupt()
-            run = false
-        }
-        thread = Thread(Runnable {
-            run = true
-            while (run) {
-                plotData = true
-                try {
-                    Thread.sleep((rate).toLong())
-                }catch (e: InterruptedException) {
-                    e.printStackTrace()
-                }
-            }
-        })
-        thread.start()
-    }
+//    private fun startPlot() {
+//        if (::thread.isInitialized) {
+//            thread.interrupt()
+//            run = false
+//        }
+//        thread = Thread(Runnable {
+//            run = true
+//            while (run) {
+//                plotData = true
+//                try {
+//                    Thread.sleep((rate).toLong())
+//                }catch (e: InterruptedException) {
+//                    e.printStackTrace()
+//                }
+//            }
+//        })
+//        thread.start()
+//    }
 
     private fun onTimer(millisUntilFinished: Long) {
         viewModel.timeMilli.value = millisUntilFinished
@@ -304,24 +294,19 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
         super.onResume()
         run = true
         sensorManager.registerListener(this, accSensor, SensorManager.SENSOR_DELAY_NORMAL)
-        viewModel.accSubmitSetting.observe(viewLifecycleOwner, Observer {
-            if (it) {
-                viewModel.accRTxt.observe(viewLifecycleOwner, Observer { Rtxt ->
-                    et_rate.setText(Rtxt.toString())
-                    rate = 1000.0 / Rtxt
-                })
-                viewModel.accCenterFreq.observe(viewLifecycleOwner, Observer { cen ->
-                    center = cen
-                })
+        viewModel.accRTxt.observe(viewLifecycleOwner, Observer { Rtxt ->
+            rate = 1000.0 / Rtxt
+        })
+        viewModel.accCenterFreq.observe(viewLifecycleOwner, Observer { cen ->
+            center = cen
+        })
 
-                viewModel.accWidthFreq.observe(viewLifecycleOwner, Observer { w ->
-                    width = w
-                })
+        viewModel.accWidthFreq.observe(viewLifecycleOwner, Observer { w ->
+            width = w
+        })
 
-                viewModel.accOrder.observe(viewLifecycleOwner, Observer { o ->
-                    order = o
-                })
-            }
+        viewModel.accOrder.observe(viewLifecycleOwner, Observer { o ->
+            order = o
         })
 
         if (viewModel.isOnTimer.value == true) {
@@ -336,6 +321,7 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
                     btn_save.setImageResource(R.drawable.ic_save)
                     writer.flush()
                     writer.close()
+                    showDialog()
                     timer.cancel()
                 }
                 override fun onTick(millisUntilFinished: Long) {
@@ -344,7 +330,7 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
 
             }.start()
         }
-        startPlot()
+//        startPlot()
     }
 
     override fun onPause() {
@@ -355,20 +341,13 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
         }
 
         viewModel.timeNow.value = SystemClock.elapsedRealtime()
-        if (::timer.isInitialized) {
-            timer.cancel()
-            viewModel.isOnTimer.value = false
-        }
 
         sensorManager.unregisterListener(this)
     }
 
     override fun onStop() {
         viewModel.timeNow.value = SystemClock.elapsedRealtime()
-        if (::timer.isInitialized) {
-            timer.cancel()
-            viewModel.isOnTimer.value = false
-        }
+
         super.onStop()
     }
 
@@ -376,10 +355,15 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     override fun onSensorChanged(event: SensorEvent?) {
-        if (plotData) {
+//        if (plotData) {
+//            addEntry(event!!)
+//            plotData = false
+//        }
+        if (SystemClock.elapsedRealtime() - now >= rate) {
+            now = SystemClock.elapsedRealtime()
             addEntry(event!!)
-            plotData = false
         }
+
     }
 
     override fun onDestroy() {
@@ -398,4 +382,19 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
         }
         super.onDestroy()
     }
+
+    private fun showDialog() {
+        val alertDialog: AlertDialog? = requireActivity().let {
+            val builder = AlertDialog.Builder(it)
+            builder.apply {
+                setPositiveButton("تایید", { dialog, id -> })
+            }
+
+            builder.setMessage("در فایل $fileName در پوشه Accelerometer ذخیره شد")
+            builder.create()
+        }
+
+        alertDialog?.show()
+    }
+
 }

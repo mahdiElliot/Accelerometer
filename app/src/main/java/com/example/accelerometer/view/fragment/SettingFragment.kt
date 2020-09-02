@@ -50,12 +50,14 @@ class SettingFragment : Fragment() {
             et_width_freq.setText(viewModel.accWidthFreq.value.toString())
             et_order.setSelection(viewModel.accOrder.value!! - 1)
             et_time.setText(viewModel.accSaveTime.value.toString())
+            switch_submit.isChecked = viewModel.accSubmitSetting.value!!
         }else {
             et_rate.setText(viewModel.gyroRTxt.value.toString())
             et_center_freq.setText(viewModel.gyroCenterFreq.value.toString())
             et_width_freq.setText(viewModel.gyroWidthFreq.value.toString())
             et_order.setSelection(viewModel.gyroOrder.value!! - 1)
             et_time.setText(viewModel.gyroSaveTime.value.toString())
+            switch_submit.isChecked = viewModel.gyroSubmitSetting.value!!
         }
 
         btn_save.setOnClickListener {
@@ -72,6 +74,13 @@ class SettingFragment : Fragment() {
                 save()
         }
 
+        switch_submit.setOnClickListener {
+            if (t == '1')
+                viewModel.accSubmitSetting.value = switch_submit.isChecked
+            else
+                viewModel.gyroSubmitSetting.value = switch_submit.isChecked
+        }
+
     }
 
     override fun onResume() {
@@ -83,12 +92,14 @@ class SettingFragment : Fragment() {
             et_width_freq.setText(viewModel.accWidthFreq.value.toString())
             et_order.setSelection(viewModel.accOrder.value!! - 1)
             et_time.setText(viewModel.accSaveTime.value.toString())
+            switch_submit.isChecked = viewModel.accSubmitSetting.value!!
         }else {
             et_rate.setText(viewModel.gyroRTxt.value.toString())
             et_center_freq.setText(viewModel.gyroCenterFreq.value.toString())
             et_width_freq.setText(viewModel.gyroWidthFreq.value.toString())
             et_order.setSelection(viewModel.gyroOrder.value!! - 1)
             et_time.setText(viewModel.gyroSaveTime.value.toString())
+            switch_submit.isChecked = viewModel.gyroSubmitSetting.value!!
         }
     }
 
@@ -99,14 +110,14 @@ class SettingFragment : Fragment() {
             viewModel.accWidthFreq.value = et_width_freq.text.toString().toDouble()
             viewModel.accOrder.value = et_order.selectedItemPosition + 1
             viewModel.accSaveTime.value = et_time.text.toString().toInt()
-            viewModel.accSubmitSetting.value = switch_submit.isChecked
+//            viewModel.accSubmitSetting.value = switch_submit.isChecked
         } else {  //gyroscope
             viewModel.gyroRTxt.value = et_rate.text.toString().toInt()
             viewModel.gyroCenterFreq.value = et_center_freq.text.toString().toDouble()
             viewModel.gyroWidthFreq.value = et_width_freq.text.toString().toDouble()
             viewModel.gyroOrder.value = et_order.selectedItemPosition + 1
             viewModel.gyroSaveTime.value = et_time.text.toString().toInt()
-            viewModel.gyroSubmitSetting.value = switch_submit.isChecked
+//            viewModel.gyroSubmitSetting.value = switch_submit.isChecked
         }
 
         Toast.makeText(context, "ذخیره شد", Toast.LENGTH_LONG).show()

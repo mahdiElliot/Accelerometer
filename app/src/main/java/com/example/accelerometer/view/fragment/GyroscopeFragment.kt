@@ -30,13 +30,6 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import kotlinx.android.synthetic.main.fragment_gyroscope.*
-import kotlinx.android.synthetic.main.fragment_gyroscope.btn_down
-import kotlinx.android.synthetic.main.fragment_gyroscope.btn_save
-import kotlinx.android.synthetic.main.fragment_gyroscope.btn_submit
-import kotlinx.android.synthetic.main.fragment_gyroscope.btn_up
-import kotlinx.android.synthetic.main.fragment_gyroscope.chart
-import kotlinx.android.synthetic.main.fragment_gyroscope.et_rate
-import kotlinx.android.synthetic.main.fragment_gyroscope.tv_timer
 import uk.me.berndporr.iirj.Butterworth
 import java.io.File
 import java.io.FileWriter
@@ -56,18 +49,21 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
     var y = 0.0
     var z = 0.0
     lateinit var thread: Thread
-    var plotData = true
+//    var plotData = true
     var run = true
-    var rate = 1000.0 / 1
+    var rate = 1000.0 / 50
     val butterWorth = Butterworth()
     var center = 0.5
     var width = 100.0
     var order = 2
 
     lateinit var timer: CountDownTimer
+    var now = 0.toLong()
 
     lateinit var writer: FileWriter
     lateinit var dbHelper: DbHelperGyr
+
+    var fileName  = ""
 
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?,
@@ -81,7 +77,6 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        et_rate.setText(viewModel.gyroRTxt.value.toString())
         rate = 1000.0 / viewModel.gyroRTxt.value!!
         center = viewModel.gyroCenterFreq.value!!
         width = viewModel.gyroWidthFreq.value!!
@@ -131,7 +126,7 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
         chart.axisLeft.setDrawGridLines(false)
         chart.xAxis.setDrawGridLines(false)
         chart.setDrawBorders(false)
-        startPlot()
+//        startPlot()
 
 
         btn_up.setOnClickListener {
@@ -142,13 +137,6 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
         btn_down.setOnClickListener {
             leftAxis.axisMaximum -= 2
             leftAxis.axisMinimum -= 2
-        }
-
-        btn_submit.setOnClickListener {
-            val r = et_rate.text.toString().toInt()
-            viewModel.gyroRTxt.value = r
-            rate = 1000.0 / r
-            startPlot()
         }
 
         btn_acc.setOnClickListener {
@@ -169,21 +157,6 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
 
         btn_save.setOnClickListener {
             dbHelper = DbHelperGyr(context)
-//            if (dbHelper.save(Accelerometer(x, y, z))) {
-//                val alertDialog: AlertDialog? = requireActivity().let {
-//                    val builder = AlertDialog.Builder(it)
-//                    builder.apply {
-//                        setPositiveButton("تایید", { dialog, id ->
-//                            Toast.makeText(context, "ذخیره شد", Toast.LENGTH_LONG).show()
-//                        })
-//                    }
-//
-//                    builder.setMessage("x: $x  y: $y  z: $z")
-//                    builder.create()
-//                }
-//
-//                alertDialog?.show()
-//            }
             if (viewModel.isOnTimer.value == true) {
                 timer.cancel()
                 viewModel.isOnTimer.value = false
@@ -195,8 +168,8 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
                 tv_timer.visibility = View.VISIBLE
                 val formatter = SimpleDateFormat("yyyy_MM_dd")
                 val now = Date()
-                val fileName = formatter.format(now)
-                val f = File(MainActivity.file, "gyro_${fileName}_${now.time}.txt")
+                fileName = "gyro_${formatter.format(now)}_${now.time}.txt"
+                val f = File(MainActivity.file, fileName)
                 f.createNewFile()
                 writer = FileWriter(f)
                 if (::timer.isInitialized) timer.cancel()
@@ -213,6 +186,7 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
                         btn_save.setImageResource(R.drawable.ic_save)
                         writer.flush()
                         writer.close()
+                        showDialog()
                         timer.cancel()
                     }
                 }.start()
@@ -256,15 +230,24 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
             x = event.values[0].toDouble()
             y = event.values[1].toDouble()
             z = event.values[2].toDouble()
-            butterWorth.bandPass(order, rate, center, width)
-            val x2 = butterWorth.filter(x)
-            butterWorth.bandPass(order, rate, center, width)
-            val y2 = butterWorth.filter(y)
-            butterWorth.bandPass(order, rate, center, width)
-            val z2 = butterWorth.filter(z)
-            data.addEntry(Entry(set.entryCount.toFloat(), x2.toFloat()), 0)
-            data.addEntry(Entry(set2.entryCount.toFloat(), y2.toFloat()), 1)
-            data.addEntry(Entry(set3.entryCount.toFloat(), z2.toFloat()), 2)
+            viewModel.gyroSubmitSetting.observe(viewLifecycleOwner, Observer {
+                if (it) {
+                    butterWorth.bandPass(order, rate, center, width)
+                    val x2 = butterWorth.filter(x)
+                    butterWorth.bandPass(order, rate, center, width)
+                    val y2 = butterWorth.filter(y)
+                    butterWorth.bandPass(order, rate, center, width)
+                    val z2 = butterWorth.filter(z)
+                    data.addEntry(Entry(set.entryCount.toFloat(), x2.toFloat()), 0)
+                    data.addEntry(Entry(set2.entryCount.toFloat(), y2.toFloat()), 1)
+                    data.addEntry(Entry(set3.entryCount.toFloat(), z2.toFloat()), 2)
+                } else {
+                    data.addEntry(Entry(set.entryCount.toFloat(), x.toFloat()), 0)
+                    data.addEntry(Entry(set2.entryCount.toFloat(), y.toFloat()), 1)
+                    data.addEntry(Entry(set3.entryCount.toFloat(), z.toFloat()), 2)
+                }
+            })
+
             data.notifyDataChanged()
             chart.notifyDataSetChanged()
             chart.setMaxVisibleValueCount(150)
@@ -272,24 +255,24 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
         }
     }
 
-    private fun startPlot() {
-        if (::thread.isInitialized) {
-            thread.interrupt()
-            run = false
-        }
-        thread = Thread(Runnable {
-            run = true
-            while (run) {
-                plotData = true
-                try {
-                    Thread.sleep((rate).toLong())
-                }catch (e: InterruptedException) {
-                    e.printStackTrace()
-                }
-            }
-        })
-        thread.start()
-    }
+//    private fun startPlot() {
+//        if (::thread.isInitialized) {
+//            thread.interrupt()
+//            run = false
+//        }
+//        thread = Thread(Runnable {
+//            run = true
+//            while (run) {
+//                plotData = true
+//                try {
+//                    Thread.sleep((rate).toLong())
+//                }catch (e: InterruptedException) {
+//                    e.printStackTrace()
+//                }
+//            }
+//        })
+//        thread.start()
+//    }
 
 
 
@@ -297,24 +280,19 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
         super.onResume()
         run = true
         sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL)
-        viewModel.gyroSubmitSetting.observe(viewLifecycleOwner, Observer {
-            if (it) {
-                viewModel.gyroRTxt.observe(viewLifecycleOwner, Observer { Rtxt ->
-                    et_rate.setText(Rtxt.toString())
-                    rate = 1000.0 / Rtxt
-                })
-                viewModel.gyroCenterFreq.observe(viewLifecycleOwner, Observer { cen ->
-                    center = cen
-                })
+        viewModel.gyroRTxt.observe(viewLifecycleOwner, Observer { Rtxt ->
+            rate = 1000.0 / Rtxt
+        })
+        viewModel.gyroCenterFreq.observe(viewLifecycleOwner, Observer { cen ->
+            center = cen
+        })
 
-                viewModel.gyroWidthFreq.observe(viewLifecycleOwner, Observer { w ->
-                    width = w
-                })
+        viewModel.gyroWidthFreq.observe(viewLifecycleOwner, Observer { w ->
+            width = w
+        })
 
-                viewModel.gyroOrder.observe(viewLifecycleOwner, Observer { o ->
-                    order = o
-                })
-            }
+        viewModel.gyroOrder.observe(viewLifecycleOwner, Observer { o ->
+            order = o
         })
 
         if (viewModel.isOnTimer.value == true) {
@@ -329,6 +307,7 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
                     btn_save.setImageResource(R.drawable.ic_save)
                     writer.flush()
                     writer.close()
+                    showDialog()
                     timer.cancel()
                 }
                 override fun onTick(millisUntilFinished: Long) {
@@ -337,7 +316,7 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
             }.start()
         }
 
-        startPlot()
+//        startPlot()
     }
 
     private fun onTimer(millisUntilFinished: Long) {
@@ -368,18 +347,12 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
         sensorManager.unregisterListener(this)
 
         viewModel.timeNow.value = SystemClock.elapsedRealtime()
-        if (::timer.isInitialized) {
-            timer.cancel()
-            viewModel.isOnTimer.value = false
-        }
+
     }
 
     override fun onStop() {
         viewModel.timeNow.value = SystemClock.elapsedRealtime()
-        if (::timer.isInitialized) {
-            timer.cancel()
-            viewModel.isOnTimer.value = false
-        }
+
         super.onStop()
     }
 
@@ -403,12 +376,31 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
         super.onDestroy()
     }
 
+    private fun showDialog() {
+        val alertDialog: AlertDialog? = requireActivity().let {
+            val builder = AlertDialog.Builder(it)
+            builder.apply {
+                setPositiveButton("تایید", { dialog, id -> })
+            }
+
+            builder.setMessage("در فایل $fileName در پوشه Accelerometer ذخیره شد")
+            builder.create()
+        }
+
+        alertDialog?.show()
+    }
+
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     override fun onSensorChanged(event: SensorEvent?) {
-        if (plotData) {
+//        if (plotData) {
+//            addEntry(event!!)
+//            plotData = false
+//        }
+
+        if (SystemClock.elapsedRealtime() - now >= rate) {
+            now = SystemClock.elapsedRealtime()
             addEntry(event!!)
-            plotData = false
         }
     }
 

@@ -64,4 +64,9 @@ class DbHelperGyr (context: Context?) : SQLiteOpenHelper(context,
         ) > 0
     }
 
+    fun deleteAll() : Boolean {
+        val db = this.writableDatabase
+        return db.delete(TABLE_NAME, null, null) > 0
+    }
+
 }
