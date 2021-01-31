@@ -179,7 +179,6 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
                 run = false
             }
             if (::writer.isInitialized){
-                writer.flush()
                 writer.close()
             }
             if (::timer.isInitialized) {
@@ -373,7 +372,6 @@ class AccelerometerFragment : Fragment(), SensorEventListener {
             run = false
         }
         if (::writer.isInitialized){
-            writer.flush()
             writer.close()
         }
         if (::timer.isInitialized) {

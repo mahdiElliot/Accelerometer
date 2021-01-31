@@ -19,8 +19,8 @@ class DbHelperGyr (context: Context?) : SQLiteOpenHelper(context,
 
     override fun onCreate(db: SQLiteDatabase?) {
         db?.execSQL(
-            "create table " + "$TABLE_NAME ($COLUMN_X text not null, " +
-                    "$COLUMN_Y text not null, $COLUMN_Z text not null, primary key($COLUMN_X, $COLUMN_Y, $COLUMN_Z))"
+            "create table " + "$TABLE_NAME (id INTEGER PRIMARY KEY AUTOINCREMENT, $COLUMN_X text not null, " +
+                    "$COLUMN_Y text not null, $COLUMN_Z text not null)"
         )
     }
 

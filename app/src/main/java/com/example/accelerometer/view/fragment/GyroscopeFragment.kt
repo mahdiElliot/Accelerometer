@@ -145,7 +145,6 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
                 run = false
             }
             if (::writer.isInitialized){
-                writer.flush()
                 writer.close()
             }
             if (::timer.isInitialized) {
@@ -364,7 +363,6 @@ class GyroscopeFragment : Fragment(), SensorEventListener {
         }
 
         if (::writer.isInitialized){
-            writer.flush()
             writer.close()
         }
 
